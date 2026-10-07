@@ -1,0 +1,51 @@
+{
+  "$comment": "Example custom lens pack for a security pass. Run with: jev-xray <repo> --lenses lenses/security-review.json. Each lens is one typed question; one Jev call per file answers all of them.",
+  "lenses": [
+    {
+      "key": "trust_boundary",
+      "label": "Trust boundary",
+      "hint": "Where untrusted data enters",
+      "type": "noul",
+      "instructions": "`content` receives data from outside the program (HTTP requests, files, environment, CLI arguments, queues or third-party APIs) and acts on it."
+    },
+    {
+      "key": "injection",
+      "label": "Injection risk",
+      "hint": "SQL, shell, template, path",
+      "type": "score",
+      "instructions": "How exposed is `content` to injection (SQL, shell commands, templates, file paths or eval) from data it does not control?",
+      "criteria": [
+        "None: no interpreter or command is built from data.",
+        "Low: data reaches an interpreter only through safe, parameterized APIs.",
+        "Medium: strings are assembled for an interpreter but look validated.",
+        "High: untrusted strings are concatenated into queries, commands or paths."
+      ]
+    },
+    {
+      "key": "secrets",
+      "label": "Secrets in code",
+      "hint": "Keys, tokens, passwords",
+      "type": "noul",
+      "instructions": "`content` contains what looks like a real credential, API key, private key or password, not a placeholder or an environment lookup."
+    },
+    {
+      "key": "authz",
+      "label": "Authorization",
+      "hint": "Who may do what",
+      "type": "choice",
+      "instructions": "How does `content` relate to authorization (deciding whether a caller may perform an action)?",
+      "criteria": {
+        "enforces": "It checks permissions, roles or ownership before acting.",
+        "relies": "It performs sensitive actions and relies on a caller to have checked permissions.",
+        "unrelated": "It performs no sensitive actions."
+      }
+    },
+    {
+      "key": "pii",
+      "label": "Personal data",
+      "hint": "Handles or logs PII",
+      "type": "noul",
+      "instructions": "`content` stores, transmits or logs personal data such as emails, names, addresses, phone numbers or payment details."
+    }
+  ]
+}

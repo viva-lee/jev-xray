@@ -1,0 +1,4 @@
+node_modules/
+.jev-xray/
+*.log
+.DS_Store

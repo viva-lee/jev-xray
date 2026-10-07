@@ -1,0 +1,108 @@
+{
+  "$comment": "Default lens pack. Every lens is one typed question that Jev answers for every file, all in a single request per file. `label` and `hint` are UI-only and are never sent to the API.",
+  "lenses": [
+    {
+      "key": "role",
+      "label": "Role",
+      "hint": "What job does each file do?",
+      "type": "choice",
+      "instructions": "What is the main role of the file at `path` in this codebase, judging from `content`?",
+      "criteria": {
+        "core": "Core domain or business logic, algorithms, internal engines.",
+        "api": "Entry points and interfaces: HTTP handlers, routes, CLI commands, RPC, the public SDK surface.",
+        "ui": "User interface: components, views, pages, styles, client-side presentation.",
+        "data": "Data access and persistence: database queries, models, schemas, migrations, caching, storage.",
+        "util": "Shared helpers, type definitions, constants and small glue code used across the codebase.",
+        "infra": "Configuration, build, CI, deployment, packaging, tooling and maintenance scripts.",
+        "tests": "Automated tests, fixtures, mocks and benchmarks.",
+        "docs": "Documentation, guides, examples and changelogs."
+      }
+    },
+    {
+      "key": "blast_radius",
+      "label": "Blast radius",
+      "hint": "How bad is a subtle bug here?",
+      "type": "score",
+      "instructions": "If a subtle bug slipped into `content`, how much damage could it do to the product and its users?",
+      "criteria": [
+        "Cosmetic: nobody would notice.",
+        "Local: one minor feature misbehaves.",
+        "Feature: an important feature breaks.",
+        "System: many features or the whole application break.",
+        "Severe: data loss, a security breach, or money lost."
+      ]
+    },
+    {
+      "key": "complexity",
+      "label": "Complexity",
+      "hint": "How hard is it to change safely?",
+      "type": "score",
+      "instructions": "How much careful thought does a competent engineer need to change `content` without breaking anything?",
+      "criteria": [
+        "Trivial: obvious at a glance.",
+        "Simple: straightforward, linear logic.",
+        "Moderate: some state or branching to keep in mind.",
+        "Intricate: subtle interactions, concurrency, or many edge cases.",
+        "Labyrinth: very hard to change without breaking something."
+      ]
+    },
+    {
+      "key": "security",
+      "label": "Security-sensitive",
+      "hint": "Auth, secrets, crypto, untrusted input",
+      "type": "noul",
+      "instructions": "`content` handles security-sensitive work: authentication, authorization, secrets or credentials, cryptography, or parsing untrusted input.",
+      "criteria": {
+        "true": "The file implements or directly controls one of these security concerns.",
+        "false": "The file does not touch these concerns, or only mentions them in passing."
+      }
+    },
+    {
+      "key": "debt",
+      "label": "Tech debt",
+      "hint": "How much cleanup is owed?",
+      "type": "score",
+      "instructions": "How much technical debt does `content` carry?",
+      "criteria": [
+        "Clean: idiomatic, well-structured, nothing to fix.",
+        "Fine: minor nits only.",
+        "Some smells: duplication, unclear names, or long functions.",
+        "Messy: tangled logic, hacks, or workarounds piling up.",
+        "Rewrite candidate: fragile and hard to reason about."
+      ]
+    },
+    {
+      "key": "needs_tests",
+      "label": "Deserves tests",
+      "hint": "Logic that should be under test",
+      "type": "noul",
+      "instructions": "`content` contains non-trivial logic (branching, parsing, calculations or state changes) that deserves its own automated tests.",
+      "criteria": {
+        "true": "The file has real logic worth testing and it is not itself a test file.",
+        "false": "The file is a test, configuration, documentation, or trivial glue."
+      }
+    },
+    {
+      "key": "start_here",
+      "label": "Start here",
+      "hint": "Read these in your first hour",
+      "type": "noul",
+      "instructions": "A new contributor who wants to understand this codebase should read the file at `path` during their first hour, because it is an entry point or defines a central concept.",
+      "criteria": {
+        "true": "An entry point, a central abstraction, or the best overview of how things fit together.",
+        "false": "A detail that only matters once you already know the codebase."
+      }
+    },
+    {
+      "key": "legacy",
+      "label": "Legacy",
+      "hint": "Deprecated, abandoned, commented out",
+      "type": "noul",
+      "instructions": "`content` looks deprecated, legacy, abandoned, or mostly commented out.",
+      "criteria": {
+        "true": "Marked deprecated, superseded by something else, or largely dead code.",
+        "false": "Code that is current and in active use."
+      }
+    }
+  ]
+}

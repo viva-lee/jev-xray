@@ -1,0 +1,138 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Jev X-Ray</title>
+<meta name="description" content="Every file in a repo, judged by Jev in one typed call each, shown as a live map.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="app.css">
+</head>
+<body>
+<div id="sim-banner" class="sim-banner" hidden>
+  <strong>SIMULATED</strong>
+  <span>These answers come from path and keyword heuristics, not from Jev. Set <code>TYPESAFE_API_KEY</code> and run again for real decisions.</span>
+</div>
+
+<header class="top">
+  <div class="brand">
+    <div class="logo">JEV <span class="slash">//</span> X-RAY</div>
+    <div class="tag"><span id="repo-name">repo</span> · every file · one call each · zero thinking tokens</div>
+  </div>
+  <dl class="stats" id="stats">
+    <div><dt>Files</dt><dd id="st-files">0</dd></div>
+    <div><dt>Decisions</dt><dd id="st-decisions">0</dd></div>
+    <div><dt>Tokens in</dt><dd id="st-tokens">0</dd></div>
+    <div><dt>Cost</dt><dd id="st-cost" class="accent">$0</dd></div>
+    <div><dt>p50</dt><dd id="st-p50">-</dd></div>
+    <div class="status"><dt>Model</dt><dd><span id="st-dot" class="dot"></span><span id="st-model">-</span></dd></div>
+  </dl>
+</header>
+
+<main class="layout">
+  <aside class="rail rail-left">
+    <section class="card ask-card" id="ask-card">
+      <h2>Ask every file</h2>
+      <form id="ask-form" autocomplete="off">
+        <textarea id="ask-input" rows="2" maxlength="600" placeholder="Does this file talk to the database?"></textarea>
+        <div class="seg" role="radiogroup" aria-label="Answer type">
+          <button type="button" class="on" data-type="noul" role="radio" aria-checked="true">Yes / no</button>
+          <button type="button" data-type="score" role="radio" aria-checked="false">Score</button>
+          <button type="button" data-type="choice" role="radio" aria-checked="false">Choice</button>
+        </div>
+        <input id="ask-options" type="text" placeholder="options, comma separated (max 8)" hidden>
+        <button type="submit" class="go" id="ask-go">Ask <span id="ask-count">all files</span> <kbd>↵</kbd></button>
+      </form>
+      <div class="chips" id="ask-chips"></div>
+      <p class="static-note" id="static-note" hidden>Static report. Run <code>jev-xray</code> on your own repo to ask new questions.</p>
+    </section>
+    <section class="card lens-card">
+      <div id="lens-list"></div>
+    </section>
+  </aside>
+
+  <section class="stage card">
+    <div class="stage-head">
+      <nav class="crumbs" id="crumbs" aria-label="Folder"></nav>
+      <div class="lens-title">
+        <span class="type-chip" id="lens-type">choice</span>
+        <h1 id="lens-name">Role</h1>
+        <p id="lens-question"></p>
+      </div>
+      <div class="legend" id="legend"></div>
+    </div>
+    <div class="canvas-wrap" id="canvas-wrap">
+      <canvas id="map" aria-label="Treemap of files colored by the active lens" role="img"></canvas>
+      <div class="tooltip" id="tooltip" hidden></div>
+      <div class="scanline" id="scanline"></div>
+    </div>
+    <div class="stage-foot">
+      <span>area = size of file</span>
+      <span>color = Jev's answer</span>
+      <span>gray haze = Jev unsure</span>
+      <span>click a folder to zoom · <kbd>esc</kbd> back</span>
+      <span class="grow"></span>
+      <button type="button" class="link" id="btn-table">Table view</button>
+      <a class="link" id="btn-export" href="report.html" hidden>Export report</a>
+    </div>
+  </section>
+
+  <aside class="rail rail-right">
+    <section class="card inspector" id="inspector"></section>
+    <section class="card">
+      <h2 id="top-title">Top files</h2>
+      <ol class="toplist" id="toplist"></ol>
+    </section>
+    <section class="card stream-card">
+      <h2>Decision stream <span class="live-tag" id="stream-tag">live</span></h2>
+      <ol class="stream" id="stream"></ol>
+    </section>
+  </aside>
+</main>
+
+<footer class="foot">
+  <span class="line"><b>the model</b> thinks · <b class="accent">the layer</b> decides</span>
+  <span id="foot-meta"></span>
+</footer>
+
+<div class="modal" id="lines-modal" hidden>
+  <div class="modal-box lines-box">
+    <header>
+      <div>
+        <div class="eyebrow">Where in this file?</div>
+        <h3 id="lines-path"></h3>
+        <p id="lines-question"></p>
+      </div>
+      <button type="button" class="close" data-close aria-label="Close">×</button>
+    </header>
+    <div class="lines-meta" id="lines-meta"></div>
+    <div class="lines-body">
+      <div class="code" id="lines-code"></div>
+      <canvas class="minimap" id="lines-minimap" aria-hidden="true"></canvas>
+    </div>
+  </div>
+</div>
+
+<div class="modal" id="table-modal" hidden>
+  <div class="modal-box table-box">
+    <header>
+      <div>
+        <div class="eyebrow">Every decision</div>
+        <h3>Table view</h3>
+      </div>
+      <input type="search" id="table-filter" placeholder="filter paths">
+      <button type="button" class="close" data-close aria-label="Close">×</button>
+    </header>
+    <div class="table-scroll"><table id="table"></table></div>
+  </div>
+</div>
+
+<!-- scripts -->
+<script src="color.js"></script>
+<script src="treemap.js"></script>
+<script src="app.js"></script>
+<!-- /scripts -->
+</body>
+</html>
