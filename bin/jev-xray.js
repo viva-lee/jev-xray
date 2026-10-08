@@ -27,7 +27,8 @@ Options
   --type <t>            For ask: noul (yes/no, default), score, or choice
   --options <a,b,c>     For ask --type choice: the options
   --lenses <file>       Use a custom lens pack (JSON, see lenses/default.json)
-  --model <id>          Jev model id (default: jev-latest)
+  --model <id>          Jev model id (default: $JEV_MODEL, else jev-latest)
+  --env <file>          Load variables from this file (default: ./.env when present)
   --max-files <n>       Judge at most n files (default: 1500)
   --max-tokens <n>      Excerpt cap per file in tokens (default: 3000)
   --rps <n>             Requests per second (default: 18; the API allows 20)
@@ -42,7 +43,8 @@ Options
   -v, --version         Show the version
 
 Environment
-  TYPESAFE_API_KEY      Your Jev API key (console.typesafe.ai)
+  TYPESAFE_API_KEY      Your Jev API key (console.typesafe.ai); a .env file works too
+  JEV_MODEL             Default model: jev-latest, jev-preview, or a pinned id like jev-1.13.0
 `;
 
 const useColor = process.stdout.isTTY && !process.env.NO_COLOR;
@@ -130,7 +132,8 @@ async function main() {
       type: { type: 'string', default: 'noul' },
       options: { type: 'string' },
       lenses: { type: 'string' },
-      model: { type: 'string', default: 'jev-latest' },
+      model: { type: 'string' },
+      env: { type: 'string' },
       'max-files': { type: 'string', default: '1500' },
       'max-tokens': { type: 'string', default: '3000' },
       rps: { type: 'string', default: '18' },
@@ -155,9 +158,20 @@ async function main() {
   const root = path.resolve((askMode ? positionals[2] : positionals[0]) || '.');
   const ui = o['no-ui'] ? false : o.ui ?? !askMode;
 
+  // Keys live in the environment or a .env file; real variables win over the file.
+  if (typeof process.loadEnvFile === 'function') {
+    try {
+      process.loadEnvFile(o.env || '.env');
+    } catch (err) {
+      if (o.env) throw new Error(`Could not read ${o.env}: ${err.message}`);
+    }
+  }
+  const model = o.model || process.env.JEV_MODEL || 'jev-latest';
+
   if (!o.simulate && !process.env.TYPESAFE_API_KEY) {
     console.error(`\n  ${c.pink('No TYPESAFE_API_KEY set.')}\n` +
-      `  Get a key at https://console.typesafe.ai, then: ${c.bold('export TYPESAFE_API_KEY=...')}\n` +
+      `  Get a key at https://console.typesafe.ai and put it in a .env file (see .env.example)\n` +
+      `  or export it: ${c.bold('export TYPESAFE_API_KEY=...')}\n` +
       `  Or explore the UI with heuristic stand-in answers: ${c.bold('jev-xray --simulate')}\n`);
     process.exitCode = 1;
     return;
@@ -176,13 +190,13 @@ async function main() {
   const lenses = askMode ? [] : await loadLensPack(o.lenses);
   const decider = o.simulate
     ? createSimulator()
-    : new JevClient({ model: o.model, rps: Number(o.rps), concurrency: 24 });
+    : new JevClient({ model, rps: Number(o.rps), concurrency: 24 });
   const workDir = path.join(scan.root, '.jev-xray');
   const engine = new Engine({
     scan,
     lenses,
     decider,
-    cacheFile: o['no-cache'] ? null : path.join(workDir, `cache-${o.model.replace(/[^\w.-]/g, '_')}.json`),
+    cacheFile: o['no-cache'] ? null : path.join(workDir, `cache-${model.replace(/[^\w.-]/g, '_')}.json`),
   });
   await engine.init();
 

@@ -24,6 +24,7 @@ const { values: o } = parseArgs({
     lens: { type: 'string', default: 'security' },
     file: { type: 'string', default: '' },
     'gif-width': { type: 'string', default: '960' },
+    'lapse-fps': { type: 'string', default: '2.5' },
   },
 });
 
@@ -96,6 +97,15 @@ async function record(ms, fps = 8) {
     await sleep(Math.max(0, 1000 / fps - (Date.now() - t0)));
   }
 }
+// Time-lapse: sample at a low rate until `doneExpr` is true in the page. The
+// GIF plays every frame at 8 fps, so 2 fps of capture plays back 4x faster.
+async function recordUntil(doneExpr, { fps = 2, maxMs = 90_000, tailMs = 600 } = {}) {
+  const end = Date.now() + maxMs;
+  while (Date.now() < end && !(await evaluate(doneExpr))) await record(1000 / fps, fps);
+  await record(tailMs, 8);
+}
+const SCAN_DONE = `(() => { const [a, b] = document.getElementById('st-files').textContent.split('/'); return a === b; })()`;
+const LENS_DONE = `(() => { const p = document.querySelector('.lens.on .progress'); return !p || p.style.visibility === 'hidden'; })()`;
 async function still(name) {
   await sleep(700);
   await shot(path.join(outDir, name));
@@ -112,7 +122,7 @@ try {
   await sleep(900);
 
   console.log('  recording scan…');
-  await record(7500);
+  await recordUntil(SCAN_DONE, { fps: Number(o['lapse-fps']) });
   for (const k of ['role', 'hotspot', o.lens]) {
     await clickLens(k);
     await record(1100);
@@ -127,7 +137,8 @@ try {
   })()`);
   await record(700);
   await evaluate(`document.getElementById('ask-form').requestSubmit(); true`);
-  await record(6500);
+  await record(1200);
+  await recordUntil(LENS_DONE, { fps: Number(o['lapse-fps']), tailMs: 1000 });
 
   console.log('  recording drill-down…');
   const picked = await evaluate(`(() => {

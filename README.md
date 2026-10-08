@@ -21,8 +21,7 @@ Those answers become a live treemap of the repo. Switch lenses and the whole cod
 
 > **LLMs generate. Agents execute. Jev decides.** A code map is thousands of small decisions nobody wants to pay a frontier model to think about one by one. That is exactly the workload a System One model is for.
 
-> [!NOTE]
-> The GIF and screenshots in this README were recorded with `--simulate`, a heuristic stand-in that returns answers in Jev's exact format without calling the API, so the UI can be shown without a key. The tool itself calls Jev. Re-record them against the real API with `scripts/capture.mjs` (see [Media](#media)).
+Everything on this page is a real run against the live API: [honojs/hono](https://github.com/honojs/hono), 556 files, `jev-1.13.0`. **The full 8-lens scan took 30 seconds and cost $0.050.** (The GIF time-lapses the waiting parts about 3×.)
 
 ## What you get
 
@@ -58,27 +57,41 @@ Two more are **computed in code** from those answers, never asked:
 Requires Node 20+. No dependencies.
 
 ```bash
-git clone <this repo> jev-xray && cd jev-xray
-export TYPESAFE_API_KEY=...          # console.typesafe.ai
+git clone https://github.com/viva-lee/jev-xray && cd jev-xray
+cp .env.example .env                 # paste your key from console.typesafe.ai
 node bin/jev-xray.js ~/code/your-repo
 ```
 
-A browser opens on `localhost:4242` and the map fills in as answers land. The terminal prints the same findings:
+Bring your own key: jev-xray reads `TYPESAFE_API_KEY` (and optionally `JEV_MODEL`) from the environment or from a `.env` file in the directory you run it from (`--env path/to/.env` to point elsewhere). The key never leaves your machine except in requests to TypeSafe.
+
+A browser opens on `localhost:4242` and the map fills in as answers land. The terminal prints the findings too. This is the real output for hono:
 
 ```text
-  JEV // X-RAY v0.1.0  ~/code/your-repo
+  JEV // X-RAY v0.1.0  ~/code/hono
   556 files · ~498.7k tokens of code · git history found
 
-  ▕██████████████████████████▏ 556/556 files · 4,448 decisions · 1.04M tok · $0.044
-
   Hotspots  blast radius × complexity × churn
-  ██████████████░░░░ 0.79  src/middleware/bearer-auth/index.ts  6 commits
+  ██████████████░░░░ 0.78  src/utils/jwt/jwt.ts  13 commits
+  ██████████████░░░░ 0.78  src/types.ts  14 commits
   ██████████████░░░░ 0.78  src/utils/cookie.ts  11 commits
-  ...
-  report → ~/code/your-repo/.jev-xray/xray.html
+
+  Security-sensitive
+  ██████████████████ 0.99  src/middleware/basic-auth/index.ts
+  ██████████████████ 0.99  src/middleware/bearer-auth/index.ts
+  ██████████████████ 0.99  src/middleware/jwk/jwk.ts
+
+  Start here
+  ████████████████░░ 0.87  src/index.ts
+  ███████████████░░░ 0.83  README.md
+  ███████████████░░░ 0.83  src/hono-base.ts
+
+  jev-1.13.0  537 requests · 4,448 decisions · 1.20M input tokens · $0.050 · p50 199ms · 30.0s · 19 files from cache
+  report → ~/code/hono/.jev-xray/xray.html
 ```
 
-No key yet? `node bin/jev-xray.js ~/code/your-repo --simulate` runs the whole UI on heuristic stand-in answers. Every screen and report from that mode is stamped **SIMULATED**.
+(19 files were byte-identical to others, so they were answered from the cache for free.)
+
+No key yet? `node bin/jev-xray.js ~/code/your-repo --simulate` runs the whole UI on heuristic stand-in answers in Jev's response format, without calling the API. Every screen and report from that mode is stamped **SIMULATED**.
 
 ### Ask one question from the terminal
 
@@ -116,7 +129,16 @@ flowchart LR
 
 ### Cost and speed
 
-Jev bills **$0.042 per million input tokens; output is free**. By jev-xray's own token estimate, the 556-file demo repo comes to about 1.0M input tokens for the full 8-question scan, roughly **4 cents**. At the API's 1,200 requests/minute that is about **30 seconds** of wall time. A follow-up question across all 556 files is around half a million tokens, roughly **2 cents**. The live header shows real billed usage as `usage.input_tokens` comes back.
+Jev bills **$0.042 per million input tokens; output is free**. Measured on hono (556 files):
+
+| | Requests | Input tokens | Cost | Wall time |
+|---|---:|---:|---:|---:|
+| Full scan, 8 lenses | 537 | 1.20M | **$0.050** | 30.0 s |
+| One follow-up question, every file | 537 | ~0.74M | **~$0.031** | ~30 s |
+| Find the lines in one 281-line file | 2 | 10.8k | $0.0005 | 0.27 s |
+| Re-run on an unchanged repo | 0 | 0 | $0 | instant (cache) |
+
+Median latency was 199 ms per request; wall time is set by the API's 1,200 requests/minute limit, not by the model. The live header shows billed usage as `usage.input_tokens` comes back.
 
 ## Custom lens packs
 
@@ -160,11 +182,11 @@ Keys: `1–9` switch lens · `/` ask · `t` table · click a folder header to zo
 The README media are produced by a script, not a screen recorder:
 
 ```bash
-node bin/jev-xray.js <some-repo> --no-open --port 4330 &     # with TYPESAFE_API_KEY set
+node bin/jev-xray.js <some-repo> --no-open --port 4330 &     # with your key in .env
 node scripts/capture.mjs --url http://localhost:4330/ --out docs/media
 ```
 
-It drives headless Chrome over the DevTools protocol (no Puppeteer) and needs `ffmpeg` on the path.
+It drives headless Chrome over the DevTools protocol (no Puppeteer), time-lapses the scan and the follow-up question until they finish, and needs `ffmpeg` on the path. `docs/media/hero.mp4` is the same recording as a small video for posting.
 
 ## Development
 
